@@ -9,7 +9,7 @@
   },
   "scripts": {
     "install:all": "pnpm install",
-    "test": "pnpm -w -C packages/core test"
+    "test": "pnpm --filter @priorityskills/core test"
   },
   "type": "module"
 }

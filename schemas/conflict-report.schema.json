@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConflictReport",
+  "type": "object",
+  "properties": {
+    "skillId": { "type": "string" },
+    "conflictType": { "type": "string", "enum": ["soft", "hard"] },
+    "details": { "type": "string" }
+  },
+  "required": ["skillId", "conflictType"],
+  "additionalProperties": false
+}

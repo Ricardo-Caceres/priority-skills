@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "NormalizedSkill",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string" },
+    "name": { "type": "string" },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "priority": { "type": "number" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "required": ["id", "name"],
+  "additionalProperties": false
+}
