@@ -1,0 +1,15 @@
+{
+  "name": "priorityskills",
+  "private": true,
+  "version": "0.0.0",
+  "workspaces": ["packages/*"],
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vitest": "^1.0.0"
+  },
+  "scripts": {
+    "install:all": "pnpm install",
+    "test": "pnpm -w -C packages/core test"
+  },
+  "type": "module"
+}
