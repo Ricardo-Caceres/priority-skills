@@ -61,12 +61,84 @@ export class LocalFilesystemAdapter implements SkillSourceAdapter {
   }
 }
 
+export interface GlobalHostAdapterOptions {
+  homeDir?: string
+  locations?: string[]
+}
+
+export class GlobalHostAdapter implements SkillSourceAdapter {
+  private readonly homeDir: string
+  private readonly locations: string[]
+
+  constructor(options?: GlobalHostAdapterOptions) {
+    this.homeDir = options?.homeDir ?? process.env.HOME ?? ''
+    this.locations = options?.locations ?? ['.copilot/installed-plugins']
+  }
+
+  async discover(): Promise<RawDiscoveredSkill[]> {
+    const results: RawDiscoveredSkill[] = []
+
+    for (const relative of this.locations) {
+      const base = path.resolve(this.homeDir, relative)
+      if (!fs.existsSync(base)) continue
+
+      const marketplaces = await fs.promises.readdir(base, { withFileTypes: true })
+      for (const marketplace of marketplaces) {
+        if (!marketplace.isDirectory()) continue
+        const marketplaceDir = path.join(base, marketplace.name)
+        const plugins = await fs.promises.readdir(marketplaceDir, { withFileTypes: true })
+
+        for (const plugin of plugins) {
+          if (!plugin.isDirectory()) continue
+          const pluginDir = path.join(marketplaceDir, plugin.name)
+          const skillsDir = path.join(pluginDir, 'skills')
+          if (!fs.existsSync(skillsDir)) continue
+
+          const skills = await fs.promises.readdir(skillsDir, { withFileTypes: true })
+          for (const skill of skills) {
+            if (!skill.isDirectory()) continue
+            const skillDir = path.join(skillsDir, skill.name)
+            const skillMd = path.join(skillDir, 'SKILL.md')
+            const skillJson = path.join(skillDir, 'skill.json')
+
+            if (!fs.existsSync(skillMd) && !fs.existsSync(skillJson)) continue
+            let manifest: Record<string, any> | undefined
+
+            if (fs.existsSync(skillJson)) {
+              try {
+                manifest = JSON.parse(await fs.promises.readFile(skillJson, 'utf-8'))
+              } catch (_e) {
+                // ignore malformed global skill manifests
+              }
+            }
+
+            results.push({
+              id: manifest?.id ?? skill.name,
+              name: manifest?.name ?? skill.name,
+              manifest,
+              path: skillDir
+            })
+          }
+        }
+      }
+    }
+
+    return results
+  }
+}
+
 export function normalizedSkillFactory(raw: RawDiscoveredSkill): NormalizedSkill {
   const metadata: Record<string, any> = {}
   if (raw.manifest) {
     if (raw.manifest.priority !== undefined) metadata.priority = raw.manifest.priority
     // copy other manifest fields under metadata.manifest if needed
     metadata.manifest = raw.manifest
+  }
+  if (raw.path.includes('.copilot/installed-plugins')) {
+    metadata.source = 'global_host'
+    metadata.host = 'copilot'
+  } else {
+    metadata.source = 'local_project'
   }
 
   return {

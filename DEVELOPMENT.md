@@ -11,6 +11,7 @@ Useful scripts
 - pnpm build       — build TypeScript in all packages
 - pnpm cli:scan    — build CLI and run `scan` against the current directory
 - pnpm --filter @priorityskills/cli build — build only the CLI
+- CLI defaults to include global host skills (e.g., `~/.copilot/installed-plugins`); add `--no-global` to scope only local project skills.
 
 Testing & CI
 
@@ -25,6 +26,15 @@ Contributing
 
 - Follow existing coding style. Keep changes focused and add tests for new behavior.
 - Use clear commit messages. The root contains a script to run all tests before release.
+
+Model policy (cost-aware)
+
+- Default model tier for implementation and routine checks: fast/economical.
+- Reserve high-cost models (e.g., Sonnet 4.5) only for:
+  - complex architecture decisions,
+  - critical security review,
+  - ambiguous conflict-resolution decisions.
+- If no explicit justification exists, do not escalate model tier.
 
 Release notes
 

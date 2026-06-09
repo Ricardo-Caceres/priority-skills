@@ -1,10 +1,18 @@
 import { Command } from 'commander'
 import path from 'path'
-import { LocalFilesystemAdapter, normalizedSkillFactory } from '@priorityskills/adapters'
+import { GlobalHostAdapter, LocalFilesystemAdapter, normalizedSkillFactory } from '@priorityskills/adapters'
 import { prioritizeSkills } from '@priorityskills/core'
 import conflictsModule from '@priorityskills/core'
 import { validateSkill } from '@priorityskills/core'
 import fs from 'fs'
+
+async function discoverAll(root: string, includeGlobal: boolean) {
+  const localAdapter = new LocalFilesystemAdapter()
+  const localRaw = await localAdapter.discover(root)
+  const globalRaw = includeGlobal ? await new GlobalHostAdapter().discover() : []
+  const normalized = [...localRaw, ...globalRaw].map(normalizedSkillFactory)
+  return normalized
+}
 
 const program = new Command()
 program.name('@priorityskills/cli').description('Priority Skills CLI')
@@ -13,11 +21,10 @@ program
   .command('scan')
   .description('Discover skills locally and output a summary')
   .option('--root <root>', 'project root to scan', process.cwd())
+  .option('--no-global', 'do not include globally installed host skills')
   .action(async (opts) => {
     try {
-      const adapter = new LocalFilesystemAdapter()
-      const raw = await adapter.discover(opts.root)
-      const normalized = raw.map(normalizedSkillFactory)
+      const normalized = await discoverAll(opts.root, opts.global)
       const summary = {
         root: path.resolve(opts.root),
         count: normalized.length,
@@ -35,11 +42,10 @@ program
   .description('Prioritize skills for a given task')
   .requiredOption('--task <task>', 'task description')
   .option('--root <root>', 'project root to scan', process.cwd())
+  .option('--no-global', 'do not include globally installed host skills')
   .action(async (opts) => {
     try {
-      const adapter = new LocalFilesystemAdapter()
-      const raw = await adapter.discover(opts.root)
-      const normalized = raw.map(normalizedSkillFactory)
+      const normalized = await discoverAll(opts.root, opts.global)
       const results = prioritizeSkills(normalized)
       console.log(JSON.stringify({ task: opts.task, results }, null, 2))
     } catch (e: any) {
@@ -52,11 +58,10 @@ program
   .command('conflicts')
   .description('Detect conflicting or duplicate skills and output a report')
   .option('--root <root>', 'project root to scan', process.cwd())
+  .option('--no-global', 'do not include globally installed host skills')
   .action(async (opts) => {
     try {
-      const adapter = new LocalFilesystemAdapter()
-      const raw = await adapter.discover(opts.root)
-      const normalized = raw.map(normalizedSkillFactory)
+      const normalized = await discoverAll(opts.root, opts.global)
       const reports = (conflictsModule.detectSimilarities as any)(normalized)
       const classified = reports.map((r: any) => {
         const a = normalized.find((s: any) => s.id === r.aId)!
