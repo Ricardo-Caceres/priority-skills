@@ -9,7 +9,9 @@
   },
   "scripts": {
     "install:all": "pnpm install",
-    "test": "pnpm --filter @priorityskills/core test"
+    "test": "pnpm -r run test",
+    "build": "pnpm -r run build",
+    "cli:scan": "pnpm --filter @priorityskills/cli run build && pnpm --filter @priorityskills/cli exec -- node ./dist/index.js scan --root ."
   },
   "type": "module"
 }

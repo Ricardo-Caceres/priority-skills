@@ -11,7 +11,7 @@ export const NormalizedSkillSchema = z.object({
   metadata: z.object({
     priority: z.number().optional()
   }).passthrough().optional()
-}).strict()
+}).passthrough()
 
 export const ConflictReportSchema = z.object({
   skillId: z.string(),

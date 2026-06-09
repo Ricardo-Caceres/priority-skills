@@ -1,0 +1,28 @@
+# Node
+node_modules/
+**/node_modules/
+
+# pnpm
+pnpm-lock.yaml
+.pnpm-debug.log
+
+# TypeScript
+dist/
+**/dist/
+*.tsbuildinfo
+
+# Editor
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# coverage
+coverage/
+
+# Local env
+.env
