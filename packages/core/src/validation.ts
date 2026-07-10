@@ -8,8 +8,16 @@ export const TaskContextSchema = z.object({
 export const NormalizedSkillSchema = z.object({
   id: z.string(),
   name: z.string(),
+  instructions: z.string().optional(),
   metadata: z.object({
-    priority: z.number().optional()
+    priority: z.number().optional(),
+    relevance: z.number().min(0).max(1).optional(),
+    trust: z.number().min(0).max(1).optional(),
+    cost: z.number().optional(),
+    lastUpdated: z.union([z.string(), z.number()]).optional(),
+    capabilities: z.array(z.string()).optional(),
+    languageCompatibility: z.array(z.string()).optional(),
+    phaseCompatibility: z.array(z.string()).optional()
   }).passthrough().optional()
 }).passthrough()
 

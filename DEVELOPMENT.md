@@ -1,41 +1,108 @@
-Development guide — PrioritySkills
+# Development guide — PrioritySkills
 
-Setup
+## Setup
 
-- Install pnpm (https://pnpm.io/)
-- At repo root: pnpm install
+```bash
+# Install pnpm if you don't have it: https://pnpm.io/
+pnpm install
+pnpm build    # compile all packages (core → adapters → cli)
+pnpm test     # run all tests (34 total)
+```
 
-Useful scripts
+## Useful scripts
 
-- pnpm test        — run all workspace tests
-- pnpm build       — build TypeScript in all packages
-- pnpm cli:scan    — build CLI and run `scan` against the current directory
-- pnpm --filter @priorityskills/cli build — build only the CLI
-- CLI defaults to include global host skills (e.g., `~/.copilot/installed-plugins`); add `--no-global` to scope only local project skills.
+| Script | What it does |
+|--------|--------------|
+| `pnpm test` | Run all workspace tests (Vitest) |
+| `pnpm build` | Build TypeScript in all packages (dependency order) |
+| `pnpm cli:scan` | Build CLI and run `scan` against the current directory |
+| `pnpm --filter @priorityskills/core test` | Test a single package |
+| `pnpm --filter @priorityskills/cli build` | Build only the CLI |
 
-Testing & CI
+## Package structure
 
-- Tests live in package tests (packages/*/test) and are run with Vitest.
-- To run tests for a single package: pnpm --filter @priorityskills/core test
+```
+packages/
+  core/        src/types.ts · validation.ts · engine.ts · prioritize.ts · conflicts.ts · security.ts
+  adapters/    src/discovery.ts  (LocalFilesystemAdapter + GlobalHostAdapter + normalizedSkillFactory)
+  cli/         src/index.ts      (scan · rank · conflicts · guard commands + exported discoverAll)
+  skill-priorityskills/  src/index.js  (rankSkills · detectConflicts · guardSkill)
+schemas/       JSON Schema versions of the core types (task-context, normalized-skill, conflict-report)
+```
 
-Adding skills
+## Adding a skill
 
-- Add skill manifests (skill.json or SKILL.md) under a folder and use `pnpm cli:scan` to discover.
+1. Create a directory under `.github/skills/<skill-name>/` or `skills/<skill-name>/`.
+2. Add a `skill.json` with at minimum `id` and `name`. Include scoring metadata for better ranking:
 
-Contributing
+```json
+{
+  "id": "my-skill",
+  "name": "My Skill",
+  "instructions": "What this skill does.",
+  "metadata": {
+    "priority": 50,
+    "relevance": 0.8,
+    "trust": 0.9,
+    "cost": 1,
+    "lastUpdated": "2025-06-01T00:00:00.000Z",
+    "capabilities": ["summarize"],
+    "languageCompatibility": ["ts"],
+    "phaseCompatibility": ["dev"]
+  }
+}
+```
 
-- Follow existing coding style. Keep changes focused and add tests for new behavior.
-- Use clear commit messages. The root contains a script to run all tests before release.
+3. Verify discovery and scoring: `pnpm cli:scan`.
 
-Model policy (cost-aware)
+## Testing
 
-- Default model tier for implementation and routine checks: fast/economical.
-- Reserve high-cost models (e.g., Sonnet 4.5) only for:
-  - complex architecture decisions,
-  - critical security review,
-  - ambiguous conflict-resolution decisions.
-- If no explicit justification exists, do not escalate model tier.
+- Tests live in `packages/*/test/` and run with Vitest.
+- The CLI test suite (`packages/cli/test/commands.test.ts`) covers: `discoverAll`, rank engine integration, guard validation, and conflict classification.
+- Fixtures for adapter tests are under `packages/adapters/test/fixtures/` and reused by CLI tests.
 
-Release notes
+**Coverage by package:**
+
+| Package | Test files | Tests |
+|---------|-----------|-------|
+| core | 5 | 20 |
+| adapters | 2 | 2 |
+| cli | 1 | 12 |
+
+## How `normalizedSkillFactory` works
+
+`normalizedSkillFactory` in `packages/adapters/src/discovery.ts` converts a raw discovered skill into a `NormalizedSkill`. It copies these fields from the manifest into `metadata` automatically:
+
+- **Scalar**: `priority`, `relevance`, `trust`, `cost`, `lastUpdated`, `instructions`
+- **Array**: `capabilities`, `languageCompatibility`, `phaseCompatibility`
+
+The original manifest is also preserved under `metadata.manifest`. Skills from `~/.copilot/installed-plugins` get `metadata.source = 'global_host'`; local skills get `metadata.source = 'local_project'`.
+
+## Security
+
+The `guard` command (and `guardSkill()` programmatically) runs three checks:
+
+1. **Shape** — Zod validation against `NormalizedSkillSchema`.
+2. **Instruction sanitization** — scans `instructions` for forbidden patterns (`eval(`, `exec`, `rm -rf`, `sudo`, `bypass`) and redacts them. Blocked skills are rejected.
+3. **Metadata integrity** — `priority` must be a number if present.
+
+Trust levels: `trusted` (source in `trustedSources`, default `['local']`), `blocked` (source in `blockedSources`, default `['untrusted-repo']`), `unknown` (everything else).
+
+## Contributing
+
+- Keep changes focused — one concern per PR.
+- Add tests for any new behaviour. The test suite must stay green (`pnpm test`).
+- Follow the model policy below for cost-aware AI assistance.
+
+## Model policy (cost-aware)
+
+- Default tier for implementation and routine checks: fast/economical.
+- Reserve high-cost models (Sonnet 4.5+) only for:
+  - complex architecture decisions
+  - critical security review
+  - ambiguous conflict-resolution decisions
+- Do not escalate model tier without explicit justification.
+
+## Release notes
 
 - v1 is local-only. Do not publish to npm from this repository yet.

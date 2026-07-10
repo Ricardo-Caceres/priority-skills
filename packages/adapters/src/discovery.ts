@@ -127,11 +127,18 @@ export class GlobalHostAdapter implements SkillSourceAdapter {
   }
 }
 
+const SCALAR_MANIFEST_FIELDS = ['priority', 'relevance', 'trust', 'cost', 'lastUpdated', 'instructions'] as const
+const ARRAY_MANIFEST_FIELDS = ['capabilities', 'languageCompatibility', 'phaseCompatibility'] as const
+
 export function normalizedSkillFactory(raw: RawDiscoveredSkill): NormalizedSkill {
   const metadata: Record<string, any> = {}
   if (raw.manifest) {
-    if (raw.manifest.priority !== undefined) metadata.priority = raw.manifest.priority
-    // copy other manifest fields under metadata.manifest if needed
+    for (const field of SCALAR_MANIFEST_FIELDS) {
+      if (raw.manifest[field] !== undefined) metadata[field] = raw.manifest[field]
+    }
+    for (const field of ARRAY_MANIFEST_FIELDS) {
+      if (Array.isArray(raw.manifest[field])) metadata[field] = raw.manifest[field]
+    }
     metadata.manifest = raw.manifest
   }
   if (raw.path.includes('.copilot/installed-plugins')) {

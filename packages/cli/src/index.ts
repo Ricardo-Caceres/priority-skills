@@ -1,17 +1,19 @@
 import { Command } from 'commander'
 import path from 'path'
-import { GlobalHostAdapter, LocalFilesystemAdapter, normalizedSkillFactory } from '@priorityskills/adapters'
-import { prioritizeSkills } from '@priorityskills/core'
-import conflictsModule from '@priorityskills/core'
-import { validateSkill } from '@priorityskills/core'
 import fs from 'fs'
+import { GlobalHostAdapter, LocalFilesystemAdapter, normalizedSkillFactory } from '@priorityskills/adapters'
+import {
+  runPriorityEngine,
+  validateSkill,
+  detectSimilarities,
+  classifyPair,
+  type TaskContext
+} from '@priorityskills/core'
 
-async function discoverAll(root: string, includeGlobal: boolean) {
-  const localAdapter = new LocalFilesystemAdapter()
-  const localRaw = await localAdapter.discover(root)
+export async function discoverAll(root: string, includeGlobal: boolean) {
+  const localRaw = await new LocalFilesystemAdapter().discover(root)
   const globalRaw = includeGlobal ? await new GlobalHostAdapter().discover() : []
-  const normalized = [...localRaw, ...globalRaw].map(normalizedSkillFactory)
-  return normalized
+  return [...localRaw, ...globalRaw].map(normalizedSkillFactory)
 }
 
 const program = new Command()
@@ -28,7 +30,7 @@ program
       const summary = {
         root: path.resolve(opts.root),
         count: normalized.length,
-        skills: normalized.map((s: any) => ({ id: s.id, name: s.name }))
+        skills: normalized.map((s) => ({ id: s.id, name: s.name }))
       }
       console.log(JSON.stringify(summary, null, 2))
     } catch (e: any) {
@@ -39,14 +41,23 @@ program
 
 program
   .command('rank')
-  .description('Prioritize skills for a given task')
-  .requiredOption('--task <task>', 'task description')
+  .description('Prioritize skills for a given task using the full scoring engine')
+  .requiredOption('--task <task>', 'task description or id')
   .option('--root <root>', 'project root to scan', process.cwd())
   .option('--no-global', 'do not include globally installed host skills')
+  .option('--language <language>', 'filter by language compatibility')
+  .option('--phase <phase>', 'filter by phase compatibility')
+  .option('--top-n <n>', 'maximum number of results to return', '5')
   .action(async (opts) => {
     try {
       const normalized = await discoverAll(opts.root, opts.global)
-      const results = prioritizeSkills(normalized)
+      const task: TaskContext = {
+        id: opts.task,
+        description: opts.task,
+        language: opts.language,
+        phase: opts.phase
+      }
+      const results = runPriorityEngine(task, normalized, { topN: parseInt(opts.topN, 10) })
       console.log(JSON.stringify({ task: opts.task, results }, null, 2))
     } catch (e: any) {
       console.error('rank failed:', e?.message ?? String(e))
@@ -62,16 +73,16 @@ program
   .action(async (opts) => {
     try {
       const normalized = await discoverAll(opts.root, opts.global)
-      const reports = (conflictsModule.detectSimilarities as any)(normalized)
-      const classified = reports.map((r: any) => {
-        const a = normalized.find((s: any) => s.id === r.aId)!
-        const b = normalized.find((s: any) => s.id === r.bId)!
+      const reports = detectSimilarities(normalized)
+      const classified = reports.map((r) => {
+        const a = normalized.find((s) => s.id === r.aId)!
+        const b = normalized.find((s) => s.id === r.bId)!
         return {
           aId: r.aId,
           bId: r.bId,
           score: r.score,
           similar: r.similar,
-          classification: conflictsModule.classifyPair(a, b)
+          classification: classifyPair(a, b)
         }
       })
       console.log(JSON.stringify(classified, null, 2))
