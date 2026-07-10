@@ -1,0 +1,26 @@
+{
+  "name": "@priorityskills/cli",
+  "version": "0.0.0",
+  "license": "MIT",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "priorityskills": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "commander": "^11.0.0",
+    "@priorityskills/core": "workspace:*",
+    "@priorityskills/adapters": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "vitest": "^1.0.0",
+    "@types/node": "^20.0.0"
+  }
+}

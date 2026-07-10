@@ -1,0 +1,6 @@
+{
+  "id": "my-skill",
+  "name": "My Skill",
+  "instructions": "do safe things only",
+  "metadata": { "priority": 10, "relevance": 0.8, "trust": 0.9 }
+}
