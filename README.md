@@ -1,5 +1,7 @@
 # PrioritySkills v1
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Discover, validate, and prioritize **skills** — small capability descriptors — across local projects and globally installed host plugins (e.g. Copilot).
 
 ---
@@ -218,5 +220,9 @@ if (!report.accepted) console.error(report.events)
 By default, `scan`, `rank`, and `conflicts` also discover skills installed in `~/.copilot/installed-plugins`. Pass `--no-global` to restrict discovery to the local project only.
 
 ---
+
+## License
+
+[MIT](LICENSE) © Rick Caceres
 
 This repo is workspace-managed with pnpm. Not published to npm — local use only.

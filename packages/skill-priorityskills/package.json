@@ -1,6 +1,7 @@
 {
   "name": "@priorityskills/skill-priorityskills",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "main": "src/index.js",
   "files": ["SKILL.md", "src"]

@@ -2,6 +2,7 @@
   "name": "priorityskills",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
   "workspaces": ["packages/*"],
   "devDependencies": {
     "typescript": "^5.2.2",
