@@ -6,7 +6,7 @@
 # Install pnpm if you don't have it: https://pnpm.io/
 pnpm install
 pnpm build    # compile all packages (core → adapters → cli)
-pnpm test     # run all tests (38 total)
+pnpm test     # run all tests (43 total)
 ```
 
 ## Useful scripts
@@ -60,14 +60,27 @@ schemas/       JSON Schema versions of the core types (task-context, normalized-
 - Tests live in `packages/*/test/` and run with Vitest.
 - The CLI test suite (`packages/cli/test/commands.test.ts`) covers: `discoverAll`, rank engine integration, guard validation, and conflict classification.
 - Fixtures for adapter tests are under `packages/adapters/test/fixtures/` and reused by CLI tests.
+- `scripts/smoke-test.sh <tarball-dir>` installs packed tarballs into a throwaway project and checks the CLI, CommonJS and ESM entry points the way a real user would.
+
+### CI
+
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`:
+
+| Job | What it checks |
+|---|---|
+| Build & test | `pnpm install --frozen-lockfile`, build and the full test suite on Node 22 and 24 (pnpm 11 needs Node ≥ 22.13) |
+| Pack & inspect | Packs `core`, `adapters` and `cli`; fails if a tarball ships anything besides `dist/`, `README.md`, `LICENSE`, `package.json`, or keeps a `workspace:` dependency |
+| Consumer smoke test | Runs `scripts/smoke-test.sh` against those tarballs on Node 18, 20, 22 and 24 (the published `engines` range) |
+
+`pnpm-lock.yaml` is committed; CI fails if it is out of date, so commit it whenever dependencies change.
 
 **Coverage by package:**
 
 | Package | Test files | Tests |
 |---------|-----------|-------|
-| core | 5 | 22 |
+| core | 5 | 23 |
 | adapters | 2 | 4 |
-| cli | 1 | 12 |
+| cli | 1 | 16 |
 
 ## How `normalizedSkillFactory` works
 
@@ -115,7 +128,12 @@ Published packages: `priorityskills` (CLI), `@priorityskills/core`, `@prioritysk
    ```bash
    pnpm -r --filter "./packages/{core,adapters,cli}" exec pnpm pack --dry-run
    ```
-3. Smoke-test as a real consumer: `pnpm pack` each package into a temp folder, `npm install` the three `.tgz` files into an empty project, then run `npx priorityskills --help` and a `rank`.
+3. Smoke-test as a real consumer (CI runs the same check):
+   ```bash
+   mkdir -p /tmp/ps-tarballs
+   for p in core adapters cli; do (cd packages/$p && pnpm pack --pack-destination /tmp/ps-tarballs); done
+   bash scripts/smoke-test.sh /tmp/ps-tarballs
+   ```
 4. Publish in dependency order (`prepublishOnly` builds automatically):
    ```bash
    npm login
