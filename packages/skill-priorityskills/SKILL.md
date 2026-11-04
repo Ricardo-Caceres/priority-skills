@@ -12,13 +12,14 @@ A Copilot-compatible skill descriptor for the PrioritySkills v1 runtime.
 const { rankSkills, detectConflicts, guardSkill } = require('@priorityskills/skill-priorityskills/src')
 ```
 
-### `rankSkills(options?)` → `PriorityResult[]`
+### `rankSkills(options?)` → `{ results: PriorityResult[], excluded: ExcludedSkill[] }`
 
 Discovers skills from the filesystem and ranks them using the full 4-factor scoring engine
-(relevance 45%, trust 25%, freshness 20%, cost 10%).
+(relevance 45%, trust 25%, freshness 20%, cost 10%). Skills that fail the security guard are
+left out of `results` and listed in `excluded` with the reason; pass `includeUnsafe: true` to rank them anyway.
 
 ```js
-const results = await rankSkills({
+const { results, excluded } = await rankSkills({
   root: process.cwd(),   // project root to scan
   global: true,          // include ~/.copilot/installed-plugins
   task: { id: 'my-task', description: 'refactor auth module', language: 'ts', phase: 'dev' },

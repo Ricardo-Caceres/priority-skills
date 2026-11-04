@@ -10,14 +10,14 @@ const { runPriorityEngine, partitionSafeSkills, detectSimilarities, classifyPair
  * @param {object} [options.task]         - TaskContext: { id, description?, language?, phase? }
  * @param {number} [options.topN]         - max results to return (default: 5)
  * @param {boolean} [options.includeUnsafe] - also rank skills that fail the security guard (default: false)
- * @returns {Promise<import('@priorityskills/core').PriorityResult[]>}
+ * @returns {Promise<{ results: import('@priorityskills/core').PriorityResult[], excluded: import('@priorityskills/core').ExcludedSkill[] }>}
  */
 async function rankSkills({ root = process.cwd(), global: includeGlobal = true, task = { id: 'default' }, topN = 5, includeUnsafe = false } = {}) {
   const localRaw = await new LocalFilesystemAdapter().discover(root)
   const globalRaw = includeGlobal ? await new GlobalHostAdapter().discover() : []
   const normalized = [...localRaw, ...globalRaw].map(normalizedSkillFactory)
-  const candidates = includeUnsafe ? normalized : partitionSafeSkills(normalized).safe
-  return runPriorityEngine(task, candidates, { topN })
+  const { safe, excluded } = includeUnsafe ? { safe: normalized, excluded: [] } : partitionSafeSkills(normalized)
+  return { results: runPriorityEngine(task, safe, { topN }), excluded }
 }
 
 /**

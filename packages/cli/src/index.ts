@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { Command } from 'commander'
+import { Command, InvalidArgumentError } from 'commander'
 import path from 'path'
 import fs from 'fs'
 import { GlobalHostAdapter, LocalFilesystemAdapter, normalizedSkillFactory } from '@priorityskills/adapters'
@@ -16,6 +16,12 @@ export async function discoverAll(root: string, includeGlobal: boolean) {
   const localRaw = await new LocalFilesystemAdapter().discover(root)
   const globalRaw = includeGlobal ? await new GlobalHostAdapter().discover() : []
   return [...localRaw, ...globalRaw].map(normalizedSkillFactory)
+}
+
+function parsePositiveInt(value: string): number {
+  const n = Number(value)
+  if (!Number.isInteger(n) || n < 1) throw new InvalidArgumentError('must be a positive integer')
+  return n
 }
 
 const program = new Command()
@@ -52,7 +58,7 @@ program
   .option('--no-global', 'do not include globally installed host skills')
   .option('--language <language>', 'filter by language compatibility')
   .option('--phase <phase>', 'filter by phase compatibility')
-  .option('--top-n <n>', 'maximum number of results to return', '5')
+  .option('--top-n <n>', 'maximum number of results to return', parsePositiveInt, 5)
   .option('--include-unsafe', 'also rank skills that fail the security guard')
   .action(async (opts) => {
     try {
@@ -66,7 +72,7 @@ program
         language: opts.language,
         phase: opts.phase
       }
-      const results = runPriorityEngine(task, safe, { topN: parseInt(opts.topN, 10) })
+      const results = runPriorityEngine(task, safe, { topN: opts.topN })
       console.log(JSON.stringify({ task: opts.task, results, excluded }, null, 2))
     } catch (e: any) {
       console.error('rank failed:', e?.message ?? String(e))

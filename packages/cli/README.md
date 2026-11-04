@@ -1,4 +1,4 @@
-# PrioritySkills v1
+# PrioritySkills
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Ricardo-Caceres/priority-skills/blob/main/LICENSE)
 
@@ -138,7 +138,7 @@ Scoring fields go under `metadata` (recommended). Top-level fields (e.g. `"relev
 {
   "id": "my-skill",
   "name": "My Skill",
-  "instructions": "Explain what this skill does. Avoid eval(), exec, rm -rf.",
+  "instructions": "Summarizes long documents into concise bullet points.",
   "metadata": {
     "priority": 50,
     "relevance": 0.8,
@@ -156,7 +156,7 @@ Scoring fields go under `metadata` (recommended). Top-level fields (e.g. `"relev
 |---|---|---|
 | `id` | string | Unique skill identifier |
 | `name` | string | Human-readable name |
-| `instructions` | string | What the skill does (sanitized on ingest — forbidden: `eval(`, `exec`, `rm -rf`, `sudo`, `bypass`) |
+| `instructions` | string | What the skill does. Checked by `guard` and before `rank`: a skill is rejected if it contains `eval(`, `exec `, `rm -rf`, `sudo ` or `bypass` (case-insensitive) |
 | `metadata.priority` | number | Base priority hint (0–100) |
 | `metadata.relevance` | number 0–1 | How relevant this skill is to its domain |
 | `metadata.trust` | number 0–1 | How trustworthy the skill source is |
@@ -207,33 +207,50 @@ Skills are filtered by `languageCompatibility` and `phaseCompatibility` before s
 ## Programmatic usage
 
 ```js
-const { runPriorityEngine, partitionSafeSkills, detectSimilarities, classifyPair, validateSkill } = require('@priorityskills/core')
+const { runPriorityEngine, partitionSafeSkills, detectSimilarities, validateSkill } = require('@priorityskills/core')
 const { LocalFilesystemAdapter, GlobalHostAdapter, normalizedSkillFactory } = require('@priorityskills/adapters')
 
-// Discover
-const raw = [
-  ...(await new LocalFilesystemAdapter().discover(process.cwd())),
-  ...(await new GlobalHostAdapter().discover())
-]
-const skills = raw.map(normalizedSkillFactory)
+async function main() {
+  // Discover
+  const raw = [
+    ...(await new LocalFilesystemAdapter().discover(process.cwd())),
+    ...(await new GlobalHostAdapter().discover())
+  ]
+  const skills = raw.map(normalizedSkillFactory)
 
-// Drop skills that fail the security guard, then rank for a task
-const { safe, excluded } = partitionSafeSkills(skills)
-const ranked = runPriorityEngine(
-  { id: 'auth-refactor', description: 'refactor auth module', language: 'ts', phase: 'dev' },
-  safe,
-  { topN: 5 }
-)
+  // Drop skills that fail the security guard, then rank for a task
+  const { safe, excluded } = partitionSafeSkills(skills)
+  const ranked = runPriorityEngine(
+    { id: 'auth-refactor', description: 'refactor auth module', language: 'ts', phase: 'dev' },
+    safe,
+    { topN: 5 }
+  )
+  console.log(ranked, excluded)
 
-// Detect conflicts
-const pairs = detectSimilarities(skills).filter(r => r.similar)
+  // Detect conflicts
+  const pairs = detectSimilarities(skills).filter((r) => r.similar)
+  console.log(pairs)
 
-// Validate before ingesting
-const report = validateSkill({ id: 'my-skill', name: 'My Skill', instructions: 'do safe things' }, 'local')
-if (!report.accepted) console.error(report.events)
+  // Validate a manifest before ingesting it
+  const report = validateSkill({ id: 'my-skill', name: 'My Skill', instructions: 'do safe things' }, 'local')
+  if (!report.accepted) console.error(report.events)
+}
+
+main()
 ```
 
-Both CommonJS (`require`) and ESM (`import`) work, and TypeScript types ship with the packages.
+With ESM you can use top-level `await` directly:
+
+```js
+import { runPriorityEngine, partitionSafeSkills } from '@priorityskills/core'
+import { LocalFilesystemAdapter, normalizedSkillFactory } from '@priorityskills/adapters'
+
+const skills = (await new LocalFilesystemAdapter().discover(process.cwd())).map(normalizedSkillFactory)
+const { safe } = partitionSafeSkills(skills)
+console.log(runPriorityEngine({ id: 'task' }, safe))
+```
+
+TypeScript types ship with the packages.
 
 ---
 

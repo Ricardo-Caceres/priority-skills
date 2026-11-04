@@ -27,10 +27,14 @@ export const defaultConfig: SecurityConfig = {
   blockedSources: ['untrusted-repo']
 }
 
+// Keeps only the most recent events so long-lived processes don't grow memory without bound.
+export const MAX_AUDIT_LOG_ENTRIES = 1000
+
 export const auditLog: SecurityEvent[] = []
 
 function logEvent(ev: SecurityEvent) {
   auditLog.push(ev)
+  if (auditLog.length > MAX_AUDIT_LOG_ENTRIES) auditLog.splice(0, auditLog.length - MAX_AUDIT_LOG_ENTRIES)
 }
 
 export function sanitizeInstructions(instructions: string, config: SecurityConfig = defaultConfig) {

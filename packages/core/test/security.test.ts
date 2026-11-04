@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { sanitizeInstructions, assignTrustLevel, validateSkill, auditLog, clearAuditLog, defaultConfig, partitionSafeSkills } from '../src/security'
+import { sanitizeInstructions, assignTrustLevel, validateSkill, auditLog, clearAuditLog, defaultConfig, partitionSafeSkills, MAX_AUDIT_LOG_ENTRIES } from '../src/security'
 
 describe('security', () => {
   beforeEach(() => {
@@ -61,5 +61,17 @@ describe('partitionSafeSkills', () => {
     ])
     expect(safe).toHaveLength(0)
     expect(excluded[0].skillId).toBe('bad')
+  })
+})
+
+describe('auditLog', () => {
+  beforeEach(() => clearAuditLog())
+
+  it('is capped to the most recent MAX_AUDIT_LOG_ENTRIES events', () => {
+    for (let i = 0; i < MAX_AUDIT_LOG_ENTRIES; i++) {
+      validateSkill({ id: `s${i}`, name: 'S', instructions: 'safe' }, 'local')
+    }
+    expect(auditLog.length).toBe(MAX_AUDIT_LOG_ENTRIES)
+    expect(auditLog[auditLog.length - 1].skillId).toBe(`s${MAX_AUDIT_LOG_ENTRIES - 1}`)
   })
 })

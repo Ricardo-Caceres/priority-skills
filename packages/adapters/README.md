@@ -11,7 +11,7 @@ npm install @priorityskills/adapters
 ```
 
 ```js
-const { LocalFilesystemAdapter, normalizedSkillFactory } = require('@priorityskills/adapters')
+import { LocalFilesystemAdapter, normalizedSkillFactory } from '@priorityskills/adapters'
 
 const raw = await new LocalFilesystemAdapter().discover(process.cwd())
 const skills = raw.map(normalizedSkillFactory)

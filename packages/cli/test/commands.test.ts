@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import path from 'path'
 import fs from 'fs'
-import { discoverAll } from '../src/index'
+import program, { discoverAll } from '../src/index'
 import { runPriorityEngine, validateSkill, detectSimilarities, classifyPair } from '@priorityskills/core'
 import type { TaskContext, NormalizedSkill } from '@priorityskills/core'
 
@@ -114,5 +114,16 @@ describe('conflicts — detectSimilarities + classifyPair integration', () => {
     const a: NormalizedSkill = { id: 'a', name: 'Image Filter', metadata: { capabilities: ['vision'] } }
     const b: NormalizedSkill = { id: 'b', name: 'Text Translator', metadata: { capabilities: ['translate'] } }
     expect(classifyPair(a, b)).toBe('complementary')
+  })
+})
+
+describe('rank --top-n validation', () => {
+  const rank = program.commands.find((c) => c.name() === 'rank')!
+  rank.exitOverride().configureOutput({ writeErr: () => {} })
+
+  it.each(['abc', '0', '-3', '2.5'])('rejects --top-n %s', async (value) => {
+    await expect(
+      program.parseAsync(['rank', '--task', 't', '--no-global', '--top-n', value], { from: 'user' })
+    ).rejects.toMatchObject({ code: 'commander.invalidArgument' })
   })
 })
