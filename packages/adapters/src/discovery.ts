@@ -133,11 +133,16 @@ const ARRAY_MANIFEST_FIELDS = ['capabilities', 'languageCompatibility', 'phaseCo
 export function normalizedSkillFactory(raw: RawDiscoveredSkill): NormalizedSkill {
   const metadata: Record<string, any> = {}
   if (raw.manifest) {
+    // Nested `metadata.*` is the documented format; top-level fields are accepted as a fallback.
+    const nested: Record<string, any> =
+      raw.manifest.metadata && typeof raw.manifest.metadata === 'object' ? raw.manifest.metadata : {}
     for (const field of SCALAR_MANIFEST_FIELDS) {
-      if (raw.manifest[field] !== undefined) metadata[field] = raw.manifest[field]
+      const value = nested[field] !== undefined ? nested[field] : raw.manifest[field]
+      if (value !== undefined) metadata[field] = value
     }
     for (const field of ARRAY_MANIFEST_FIELDS) {
-      if (Array.isArray(raw.manifest[field])) metadata[field] = raw.manifest[field]
+      const value = Array.isArray(nested[field]) ? nested[field] : raw.manifest[field]
+      if (Array.isArray(value)) metadata[field] = value
     }
     metadata.manifest = raw.manifest
   }

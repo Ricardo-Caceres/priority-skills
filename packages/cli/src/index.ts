@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { Command } from 'commander'
 import path from 'path'
 import fs from 'fs'
@@ -17,7 +18,10 @@ export async function discoverAll(root: string, includeGlobal: boolean) {
 }
 
 const program = new Command()
-program.name('@priorityskills/cli').description('Priority Skills CLI')
+program
+  .name('priorityskills')
+  .description('Discover, rank, deduplicate and security-check AI agent skills')
+  .version(require('../package.json').version)
 
 program
   .command('scan')

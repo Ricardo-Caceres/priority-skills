@@ -6,7 +6,7 @@
 # Install pnpm if you don't have it: https://pnpm.io/
 pnpm install
 pnpm build    # compile all packages (core → adapters → cli)
-pnpm test     # run all tests (34 total)
+pnpm test     # run all tests (36 total)
 ```
 
 ## Useful scripts
@@ -17,7 +17,7 @@ pnpm test     # run all tests (34 total)
 | `pnpm build` | Build TypeScript in all packages (dependency order) |
 | `pnpm cli:scan` | Build CLI and run `scan` against the current directory |
 | `pnpm --filter @priorityskills/core test` | Test a single package |
-| `pnpm --filter @priorityskills/cli build` | Build only the CLI |
+| `pnpm --filter priorityskills build` | Build only the CLI |
 
 ## Package structure
 
@@ -66,7 +66,7 @@ schemas/       JSON Schema versions of the core types (task-context, normalized-
 | Package | Test files | Tests |
 |---------|-----------|-------|
 | core | 5 | 20 |
-| adapters | 2 | 2 |
+| adapters | 2 | 4 |
 | cli | 1 | 12 |
 
 ## How `normalizedSkillFactory` works
@@ -103,6 +103,24 @@ Trust levels: `trusted` (source in `trustedSources`, default `['local']`), `bloc
   - ambiguous conflict-resolution decisions
 - Do not escalate model tier without explicit justification.
 
-## Release notes
+## Publishing to npm
 
-- v1 is local-only. Do not publish to npm from this repository yet.
+Published packages: `priorityskills` (CLI), `@priorityskills/core`, `@priorityskills/adapters`.
+`skill-priorityskills` stays private.
+
+**Always publish with `pnpm`, never `npm publish`** — pnpm rewrites `workspace:*` dependencies to real versions; npm would publish them literally and break installs.
+
+1. Bump the same version in `packages/{core,adapters,cli}/package.json`.
+2. Verify the tarballs contain only `dist/`, `README.md`, `LICENSE`:
+   ```bash
+   pnpm -r --filter "./packages/{core,adapters,cli}" exec pnpm pack --dry-run
+   ```
+3. Smoke-test as a real consumer: `pnpm pack` each package into a temp folder, `npm install` the three `.tgz` files into an empty project, then run `npx priorityskills --help` and a `rank`.
+4. Publish in dependency order (`prepublishOnly` builds automatically):
+   ```bash
+   npm login
+   pnpm --filter @priorityskills/core publish --access public
+   pnpm --filter @priorityskills/adapters publish --access public
+   pnpm --filter priorityskills publish --access public
+   ```
+5. Tag the release: `git tag v<version> && git push --tags`.

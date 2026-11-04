@@ -6,31 +6,35 @@ Discover, validate, and prioritize **skills** — small capability descriptors �
 
 ---
 
-## Quick start
+## Install
 
 ```bash
-pnpm install
-pnpm build
-pnpm test
-pnpm cli:scan          # scan current directory + global host skills
+# run without installing
+npx priorityskills scan
+
+# or install globally
+npm install -g priorityskills        # or: pnpm add -g priorityskills
+priorityskills --help
+
+# library packages
+npm install @priorityskills/core @priorityskills/adapters
 ```
+
+Requires Node.js 18+.
 
 ---
 
 ## CLI
 
-All commands are available after `pnpm build` via:
-
 ```bash
-node packages/cli/dist/index.js <command> [options]
-# or, using the workspace shortcut:
-pnpm cli:scan
+npx priorityskills <command> [options]
+npx priorityskills --version
 ```
 
 ### `scan` — discover skills
 
 ```bash
-node dist/index.js scan [--root <path>] [--no-global]
+npx priorityskills scan [--root <path>] [--no-global]
 ```
 
 Outputs a JSON summary of every skill found.
@@ -49,7 +53,7 @@ Outputs a JSON summary of every skill found.
 ### `rank` — prioritize skills for a task
 
 ```bash
-node dist/index.js rank --task <description> [--root <path>] [--no-global] \
+npx priorityskills rank --task <description> [--root <path>] [--no-global] \
   [--language <lang>] [--phase <phase>] [--top-n <n>]
 ```
 
@@ -79,7 +83,7 @@ Runs the full 4-factor scoring engine (relevance 45%, trust 25%, freshness 20%, 
 ### `conflicts` — detect duplicate or overlapping skills
 
 ```bash
-node dist/index.js conflicts [--root <path>] [--no-global]
+npx priorityskills conflicts [--root <path>] [--no-global]
 ```
 
 Compares every skill pair using Jaccard similarity over names and capability tags. Each pair is classified as `duplicate`, `overlap`, `conflicting`, or `complementary`.
@@ -99,7 +103,7 @@ Compares every skill pair using Jaccard similarity over names and capability tag
 ### `guard` — validate a skill manifest before ingesting it
 
 ```bash
-node dist/index.js guard [--file <path/to/skill.json>]
+npx priorityskills guard [--file <path/to/skill.json>]
 ```
 
 Runs three checks in sequence: shape validation (Zod), instruction sanitization (denylist), and metadata integrity. Returns `accepted: true/false` with a full audit event log.
@@ -121,6 +125,8 @@ Runs three checks in sequence: shape validation (Zod), instruction sanitization 
 ## Skill manifest format
 
 Skills are discovered from `skill.json` (or `package.json`) files inside directories under `.github/skills/` or `skills/` in your project root.
+
+Scoring fields go under `metadata` (recommended). Top-level fields (e.g. `"relevance": 0.8` next to `id`) are also accepted; if a field appears in both places, the `metadata` value wins.
 
 ```json
 {
@@ -195,23 +201,32 @@ Skills are filtered by `languageCompatibility` and `phaseCompatibility` before s
 ## Programmatic usage
 
 ```js
-const { rankSkills, detectConflicts, guardSkill } = require('@priorityskills/skill-priorityskills/src')
+const { runPriorityEngine, detectSimilarities, classifyPair, validateSkill } = require('@priorityskills/core')
+const { LocalFilesystemAdapter, GlobalHostAdapter, normalizedSkillFactory } = require('@priorityskills/adapters')
 
-// Rank skills for a task
-const results = await rankSkills({
-  root: process.cwd(),
-  global: true,
-  task: { id: 'auth-refactor', description: 'refactor auth module', language: 'ts', phase: 'dev' },
-  topN: 5
-})
+// Discover
+const raw = [
+  ...(await new LocalFilesystemAdapter().discover(process.cwd())),
+  ...(await new GlobalHostAdapter().discover())
+]
+const skills = raw.map(normalizedSkillFactory)
+
+// Rank for a task
+const ranked = runPriorityEngine(
+  { id: 'auth-refactor', description: 'refactor auth module', language: 'ts', phase: 'dev' },
+  skills,
+  { topN: 5 }
+)
 
 // Detect conflicts
-const conflicts = await detectConflicts({ root: '.', threshold: 0.5 })
+const pairs = detectSimilarities(skills).filter(r => r.similar)
 
 // Validate before ingesting
-const report = guardSkill({ id: 'my-skill', name: 'My Skill', instructions: 'do safe things' }, 'local')
+const report = validateSkill({ id: 'my-skill', name: 'My Skill', instructions: 'do safe things' }, 'local')
 if (!report.accepted) console.error(report.events)
 ```
+
+Both CommonJS (`require`) and ESM (`import`) work, and TypeScript types ship with the packages.
 
 ---
 
@@ -221,8 +236,16 @@ By default, `scan`, `rank`, and `conflicts` also discover skills installed in `~
 
 ---
 
+## Packages
+
+| npm package | Purpose |
+|---|---|
+| [`priorityskills`](https://www.npmjs.com/package/priorityskills) | CLI (`npx priorityskills`) |
+| [`@priorityskills/core`](https://www.npmjs.com/package/@priorityskills/core) | Scoring engine, validation, conflicts, security |
+| [`@priorityskills/adapters`](https://www.npmjs.com/package/@priorityskills/adapters) | Skill discovery (local + global host) |
+
+Contributing / local development: see [DEVELOPMENT.md](DEVELOPMENT.md).
+
 ## License
 
-[MIT](LICENSE) © Rick Caceres
-
-This repo is workspace-managed with pnpm. Not published to npm — local use only.
+[MIT](LICENSE) © Ricardo Cáceres

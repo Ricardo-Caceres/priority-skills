@@ -1,14 +1,39 @@
 {
   "name": "@priorityskills/adapters",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Skill discovery adapters for PrioritySkills (local project + global host plugins)",
+  "keywords": [
+    "skills",
+    "discovery",
+    "copilot",
+    "ai-agents"
+  ],
   "license": "MIT",
-  "private": true,
+  "author": "Ricardo Cáceres",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ricardo-Caceres/priority-skills.git",
+    "directory": "packages/adapters"
+  },
+  "homepage": "https://github.com/Ricardo-Caceres/priority-skills#readme",
+  "bugs": {
+    "url": "https://github.com/Ricardo-Caceres/priority-skills/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "@priorityskills/core": "workspace:*"
