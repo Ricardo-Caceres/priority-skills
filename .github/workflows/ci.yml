@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build & test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # pnpm 11 (used for development) requires Node >= 22.13
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm test
+
+  package:
+    name: Pack & inspect tarballs
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Pack publishable packages
+        run: |
+          mkdir -p tarballs
+          for p in core adapters cli; do
+            (cd "packages/$p" && pnpm pack --pack-destination ../../tarballs)
+          done
+      - name: Check tarball contents
+        run: |
+          for t in tarballs/*.tgz; do
+            echo "::group::$t"; tar -tzf "$t"; echo "::endgroup::"
+            unexpected=$(tar -tzf "$t" | grep -vE '^package/(dist/.*|README\.md|LICENSE|package\.json)$' || true)
+            if [ -n "$unexpected" ]; then
+              echo "::error::$t ships unexpected files:"; echo "$unexpected"; exit 1
+            fi
+            if tar -xzOf "$t" package/package.json | grep -q '"workspace:'; then
+              echo "::error::$t still has unresolved workspace: dependencies"; exit 1
+            fi
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarballs
+          path: tarballs/*.tgz
+          if-no-files-found: error
+
+  smoke:
+    name: Consumer smoke test (Node ${{ matrix.node }})
+    needs: package
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Published packages declare engines.node >= 18; consumers only need npm.
+        node: [18, 20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: tarballs
+          path: tarballs
+      - run: bash scripts/smoke-test.sh tarballs

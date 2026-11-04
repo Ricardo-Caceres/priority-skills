@@ -1,3 +1,4 @@
+import type { NormalizedSkill } from './types'
 import { validators } from './validation'
 
 export type TrustLevel = 'trusted' | 'unknown' | 'blocked'
@@ -26,10 +27,14 @@ export const defaultConfig: SecurityConfig = {
   blockedSources: ['untrusted-repo']
 }
 
+// Keeps only the most recent events so long-lived processes don't grow memory without bound.
+export const MAX_AUDIT_LOG_ENTRIES = 1000
+
 export const auditLog: SecurityEvent[] = []
 
 function logEvent(ev: SecurityEvent) {
   auditLog.push(ev)
+  if (auditLog.length > MAX_AUDIT_LOG_ENTRIES) auditLog.splice(0, auditLog.length - MAX_AUDIT_LOG_ENTRIES)
 }
 
 export function sanitizeInstructions(instructions: string, config: SecurityConfig = defaultConfig) {
@@ -78,7 +83,10 @@ export function validateSkill(ingested: any, source?: string, config: SecurityCo
   logEvent(evPass)
 
   // 2. instruction sanitization
-  const instructions = (ingested.instructions || '') as string
+  // Manifests may put instructions at the top level or under metadata; check both.
+  const instructions = [ingested.instructions, ingested.metadata?.instructions]
+    .filter((text): text is string => typeof text === 'string')
+    .join('\n')
   const { sanitized, blocked, reasons } = sanitizeInstructions(instructions, config)
   if (blocked) {
     const ev: SecurityEvent = { skillId, check: 'instruction-sanitization', result: 'fail', reason: reasons.join('; '), details: { sanitized }, timestamp: new Date().toISOString(), source }
@@ -113,4 +121,31 @@ export function validateSkill(ingested: any, source?: string, config: SecurityCo
 
 export function clearAuditLog() {
   auditLog.splice(0, auditLog.length)
+}
+
+export interface ExcludedSkill {
+  skillId: string
+  reason: string
+}
+
+export function partitionSafeSkills(
+  skills: NormalizedSkill[],
+  config: SecurityConfig = defaultConfig
+): { safe: NormalizedSkill[]; excluded: ExcludedSkill[] } {
+  const safe: NormalizedSkill[] = []
+  const excluded: ExcludedSkill[] = []
+  for (const skill of skills) {
+    const report = validateSkill(
+      skill,
+      typeof skill.metadata?.source === 'string' ? skill.metadata.source : undefined,
+      config
+    )
+    if (report.accepted) {
+      safe.push(skill)
+    } else {
+      const failed = report.events.find((e) => e.result === 'fail')
+      excluded.push({ skillId: skill.id, reason: failed ? `${failed.check}: ${failed.reason ?? 'failed'}` : 'rejected' })
+    }
+  }
+  return { safe, excluded }
 }

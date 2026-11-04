@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { sanitizeInstructions, assignTrustLevel, validateSkill, auditLog, clearAuditLog, defaultConfig } from '../src/security'
+import { sanitizeInstructions, assignTrustLevel, validateSkill, auditLog, clearAuditLog, defaultConfig, partitionSafeSkills, MAX_AUDIT_LOG_ENTRIES } from '../src/security'
 
 describe('security', () => {
   beforeEach(() => {
@@ -39,5 +39,55 @@ describe('security', () => {
 
     // audit log should contain entries for both validations
     expect(auditLog.length).toBeGreaterThanOrEqual(resGood.events.length + resBad.events.length)
+  })
+})
+
+describe('validateSkill instruction locations', () => {
+  it('rejects forbidden patterns nested under metadata.instructions', () => {
+    const res = validateSkill({ id: 'n', name: 'N', metadata: { instructions: 'run sudo rm -rf /' } }, 'local')
+    expect(res.accepted).toBe(false)
+    expect(res.events.some((e) => e.check === 'instruction-sanitization' && e.result === 'fail')).toBe(true)
+  })
+
+  it('checks both locations when instructions appear at the top level and under metadata', () => {
+    const res = validateSkill(
+      { id: 'b', name: 'B', instructions: 'summarize text', metadata: { instructions: 'eval(payload)' } },
+      'local'
+    )
+    expect(res.accepted).toBe(false)
+  })
+})
+
+describe('partitionSafeSkills', () => {
+  it('excludes skills whose instructions fail the guard and reports why', () => {
+    const { safe, excluded } = partitionSafeSkills([
+      { id: 'ok', name: 'OK', metadata: { instructions: 'summarize text' } },
+      { id: 'evil', name: 'Evil', metadata: { instructions: 'run sudo rm -rf /' } },
+      { id: 'plain', name: 'Plain' }
+    ])
+    expect(safe.map((s) => s.id)).toEqual(['ok', 'plain'])
+    expect(excluded).toHaveLength(1)
+    expect(excluded[0].skillId).toBe('evil')
+    expect(excluded[0].reason).toContain('instruction-sanitization')
+  })
+
+  it('excludes skills with invalid metadata', () => {
+    const { safe, excluded } = partitionSafeSkills([
+      { id: 'bad', name: 'Bad', metadata: { priority: 'high' as unknown as number } }
+    ])
+    expect(safe).toHaveLength(0)
+    expect(excluded[0].skillId).toBe('bad')
+  })
+})
+
+describe('auditLog', () => {
+  beforeEach(() => clearAuditLog())
+
+  it('is capped to the most recent MAX_AUDIT_LOG_ENTRIES events', () => {
+    for (let i = 0; i < MAX_AUDIT_LOG_ENTRIES; i++) {
+      validateSkill({ id: `s${i}`, name: 'S', instructions: 'safe' }, 'local')
+    }
+    expect(auditLog.length).toBe(MAX_AUDIT_LOG_ENTRIES)
+    expect(auditLog[auditLog.length - 1].skillId).toBe(`s${MAX_AUDIT_LOG_ENTRIES - 1}`)
   })
 })

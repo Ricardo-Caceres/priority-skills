@@ -1,17 +1,44 @@
 {
-  "name": "@priorityskills/cli",
-  "version": "0.0.0",
+  "name": "priorityskills",
+  "version": "0.1.0",
+  "description": "CLI to discover, rank, deduplicate and security-check AI agent skills",
+  "keywords": [
+    "skills",
+    "cli",
+    "ai-agents",
+    "copilot",
+    "claude",
+    "prioritization"
+  ],
   "license": "MIT",
-  "private": true,
+  "author": "Ricardo Cáceres",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ricardo-Caceres/priority-skills.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/Ricardo-Caceres/priority-skills#readme",
+  "bugs": {
+    "url": "https://github.com/Ricardo-Caceres/priority-skills/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
     "priorityskills": "dist/index.js"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "pnpm run build"
   },
   "dependencies": {
     "commander": "^11.0.0",

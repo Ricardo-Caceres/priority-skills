@@ -1,5 +1,5 @@
 const { LocalFilesystemAdapter, GlobalHostAdapter, normalizedSkillFactory } = require('@priorityskills/adapters')
-const { runPriorityEngine, detectSimilarities, classifyPair, validateSkill } = require('@priorityskills/core')
+const { runPriorityEngine, partitionSafeSkills, detectSimilarities, classifyPair, validateSkill } = require('@priorityskills/core')
 
 /**
  * Discover, validate, and rank skills for a given task context.
@@ -9,13 +9,15 @@ const { runPriorityEngine, detectSimilarities, classifyPair, validateSkill } = r
  * @param {boolean} [options.global]      - include globally installed host skills (default: true)
  * @param {object} [options.task]         - TaskContext: { id, description?, language?, phase? }
  * @param {number} [options.topN]         - max results to return (default: 5)
- * @returns {Promise<import('@priorityskills/core').PriorityResult[]>}
+ * @param {boolean} [options.includeUnsafe] - also rank skills that fail the security guard (default: false)
+ * @returns {Promise<{ results: import('@priorityskills/core').PriorityResult[], excluded: import('@priorityskills/core').ExcludedSkill[] }>}
  */
-async function rankSkills({ root = process.cwd(), global: includeGlobal = true, task = { id: 'default' }, topN = 5 } = {}) {
+async function rankSkills({ root = process.cwd(), global: includeGlobal = true, task = { id: 'default' }, topN = 5, includeUnsafe = false } = {}) {
   const localRaw = await new LocalFilesystemAdapter().discover(root)
   const globalRaw = includeGlobal ? await new GlobalHostAdapter().discover() : []
   const normalized = [...localRaw, ...globalRaw].map(normalizedSkillFactory)
-  return runPriorityEngine(task, normalized, { topN })
+  const { safe, excluded } = includeUnsafe ? { safe: normalized, excluded: [] } : partitionSafeSkills(normalized)
+  return { results: runPriorityEngine(task, safe, { topN }), excluded }
 }
 
 /**
