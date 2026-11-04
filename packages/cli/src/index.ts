@@ -5,6 +5,7 @@ import fs from 'fs'
 import { GlobalHostAdapter, LocalFilesystemAdapter, normalizedSkillFactory } from '@priorityskills/adapters'
 import {
   runPriorityEngine,
+  partitionSafeSkills,
   validateSkill,
   detectSimilarities,
   classifyPair,
@@ -52,17 +53,21 @@ program
   .option('--language <language>', 'filter by language compatibility')
   .option('--phase <phase>', 'filter by phase compatibility')
   .option('--top-n <n>', 'maximum number of results to return', '5')
+  .option('--include-unsafe', 'also rank skills that fail the security guard')
   .action(async (opts) => {
     try {
-      const normalized = await discoverAll(opts.root, opts.global)
+      const discovered = await discoverAll(opts.root, opts.global)
+      const { safe, excluded } = opts.includeUnsafe
+        ? { safe: discovered, excluded: [] }
+        : partitionSafeSkills(discovered)
       const task: TaskContext = {
         id: opts.task,
         description: opts.task,
         language: opts.language,
         phase: opts.phase
       }
-      const results = runPriorityEngine(task, normalized, { topN: parseInt(opts.topN, 10) })
-      console.log(JSON.stringify({ task: opts.task, results }, null, 2))
+      const results = runPriorityEngine(task, safe, { topN: parseInt(opts.topN, 10) })
+      console.log(JSON.stringify({ task: opts.task, results, excluded }, null, 2))
     } catch (e: any) {
       console.error('rank failed:', e?.message ?? String(e))
       process.exit(1)

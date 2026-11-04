@@ -54,10 +54,12 @@ Outputs a JSON summary of every skill found.
 
 ```bash
 npx priorityskills rank --task <description> [--root <path>] [--no-global] \
-  [--language <lang>] [--phase <phase>] [--top-n <n>]
+  [--language <lang>] [--phase <phase>] [--top-n <n>] [--include-unsafe]
 ```
 
 Runs the full 4-factor scoring engine (relevance 45%, trust 25%, freshness 20%, cost 10%) and returns the top-N ranked skills.
+
+Skills that fail the security guard (see `guard`) are **excluded by default** and listed under `excluded` with the reason. Skills that declare `languageCompatibility` / `phaseCompatibility` are only ranked when the matching `--language` / `--phase` is passed.
 
 | Option | Default | Description |
 |--------|---------|-------------|
@@ -65,6 +67,7 @@ Runs the full 4-factor scoring engine (relevance 45%, trust 25%, freshness 20%, 
 | `--language` | — | Filter to skills compatible with this language |
 | `--phase` | — | Filter to skills compatible with this phase (e.g. `dev`, `review`) |
 | `--top-n` | `5` | Maximum results to return |
+| `--include-unsafe` | off | Also rank skills that fail the security guard |
 
 ```json
 {
@@ -76,6 +79,9 @@ Runs the full 4-factor scoring engine (relevance 45%, trust 25%, freshness 20%, 
       "rank": 1,
       "explanation": "components: relevance=0.800, freshness=0.500, trust=0.900, costFactor=0.500; ..."
     }
+  ],
+  "excluded": [
+    { "skillId": "evil-skill", "reason": "instruction-sanitization: contains forbidden pattern: rm -rf" }
   ]
 }
 ```
@@ -201,7 +207,7 @@ Skills are filtered by `languageCompatibility` and `phaseCompatibility` before s
 ## Programmatic usage
 
 ```js
-const { runPriorityEngine, detectSimilarities, classifyPair, validateSkill } = require('@priorityskills/core')
+const { runPriorityEngine, partitionSafeSkills, detectSimilarities, classifyPair, validateSkill } = require('@priorityskills/core')
 const { LocalFilesystemAdapter, GlobalHostAdapter, normalizedSkillFactory } = require('@priorityskills/adapters')
 
 // Discover
@@ -211,10 +217,11 @@ const raw = [
 ]
 const skills = raw.map(normalizedSkillFactory)
 
-// Rank for a task
+// Drop skills that fail the security guard, then rank for a task
+const { safe, excluded } = partitionSafeSkills(skills)
 const ranked = runPriorityEngine(
   { id: 'auth-refactor', description: 'refactor auth module', language: 'ts', phase: 'dev' },
-  skills,
+  safe,
   { topN: 5 }
 )
 

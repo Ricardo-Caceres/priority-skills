@@ -1,3 +1,4 @@
+import type { NormalizedSkill } from './types'
 import { validators } from './validation'
 
 export type TrustLevel = 'trusted' | 'unknown' | 'blocked'
@@ -113,4 +114,32 @@ export function validateSkill(ingested: any, source?: string, config: SecurityCo
 
 export function clearAuditLog() {
   auditLog.splice(0, auditLog.length)
+}
+
+export interface ExcludedSkill {
+  skillId: string
+  reason: string
+}
+
+export function partitionSafeSkills(
+  skills: NormalizedSkill[],
+  config: SecurityConfig = defaultConfig
+): { safe: NormalizedSkill[]; excluded: ExcludedSkill[] } {
+  const safe: NormalizedSkill[] = []
+  const excluded: ExcludedSkill[] = []
+  for (const skill of skills) {
+    const instructions = skill.metadata?.instructions
+    const report = validateSkill(
+      { ...skill, ...(typeof instructions === 'string' ? { instructions } : {}) },
+      typeof skill.metadata?.source === 'string' ? skill.metadata.source : undefined,
+      config
+    )
+    if (report.accepted) {
+      safe.push(skill)
+    } else {
+      const failed = report.events.find((e) => e.result === 'fail')
+      excluded.push({ skillId: skill.id, reason: failed ? `${failed.check}: ${failed.reason ?? 'failed'}` : 'rejected' })
+    }
+  }
+  return { safe, excluded }
 }

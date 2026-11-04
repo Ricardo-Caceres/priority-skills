@@ -6,7 +6,7 @@
 # Install pnpm if you don't have it: https://pnpm.io/
 pnpm install
 pnpm build    # compile all packages (core → adapters → cli)
-pnpm test     # run all tests (36 total)
+pnpm test     # run all tests (38 total)
 ```
 
 ## Useful scripts
@@ -65,7 +65,7 @@ schemas/       JSON Schema versions of the core types (task-context, normalized-
 
 | Package | Test files | Tests |
 |---------|-----------|-------|
-| core | 5 | 20 |
+| core | 5 | 22 |
 | adapters | 2 | 4 |
 | cli | 1 | 12 |
 
