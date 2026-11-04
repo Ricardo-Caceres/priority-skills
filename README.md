@@ -156,7 +156,7 @@ Scoring fields go under `metadata` (recommended). Top-level fields (e.g. `"relev
 |---|---|---|
 | `id` | string | Unique skill identifier |
 | `name` | string | Human-readable name |
-| `instructions` | string | What the skill does. Checked by `guard` and before `rank`: a skill is rejected if it contains `eval(`, `exec `, `rm -rf`, `sudo ` or `bypass` (case-insensitive) |
+| `instructions` | string | What the skill does. Checked by `guard` and before `rank` (also when placed under `metadata.instructions`): a skill is rejected if it contains `eval(`, `exec `, `rm -rf`, `sudo ` or `bypass` (case-insensitive) |
 | `metadata.priority` | number | Base priority hint (0–100) |
 | `metadata.relevance` | number 0–1 | How relevant this skill is to its domain |
 | `metadata.trust` | number 0–1 | How trustworthy the skill source is |

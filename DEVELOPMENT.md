@@ -6,7 +6,7 @@
 # Install pnpm if you don't have it: https://pnpm.io/
 pnpm install
 pnpm build    # compile all packages (core → adapters → cli)
-pnpm test     # run all tests (43 total)
+pnpm test     # run all tests (45 total)
 ```
 
 ## Useful scripts
@@ -78,7 +78,7 @@ schemas/       JSON Schema versions of the core types (task-context, normalized-
 
 | Package | Test files | Tests |
 |---------|-----------|-------|
-| core | 5 | 23 |
+| core | 5 | 25 |
 | adapters | 2 | 4 |
 | cli | 1 | 16 |
 
@@ -96,7 +96,7 @@ The original manifest is also preserved under `metadata.manifest`. Skills from `
 The `guard` command (and `guardSkill()` programmatically) runs three checks:
 
 1. **Shape** — Zod validation against `NormalizedSkillSchema`.
-2. **Instruction sanitization** — scans `instructions` for forbidden patterns (`eval(`, `exec`, `rm -rf`, `sudo`, `bypass`) and redacts them. Blocked skills are rejected.
+2. **Instruction sanitization** — scans `instructions` (top level and `metadata.instructions`) for forbidden patterns (`eval(`, `exec`, `rm -rf`, `sudo`, `bypass`) and redacts them. Blocked skills are rejected.
 3. **Metadata integrity** — `priority` must be a number if present.
 
 Trust levels: `trusted` (source in `trustedSources`, default `['local']`), `blocked` (source in `blockedSources`, default `['untrusted-repo']`), `unknown` (everything else).

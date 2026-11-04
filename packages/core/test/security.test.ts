@@ -42,6 +42,22 @@ describe('security', () => {
   })
 })
 
+describe('validateSkill instruction locations', () => {
+  it('rejects forbidden patterns nested under metadata.instructions', () => {
+    const res = validateSkill({ id: 'n', name: 'N', metadata: { instructions: 'run sudo rm -rf /' } }, 'local')
+    expect(res.accepted).toBe(false)
+    expect(res.events.some((e) => e.check === 'instruction-sanitization' && e.result === 'fail')).toBe(true)
+  })
+
+  it('checks both locations when instructions appear at the top level and under metadata', () => {
+    const res = validateSkill(
+      { id: 'b', name: 'B', instructions: 'summarize text', metadata: { instructions: 'eval(payload)' } },
+      'local'
+    )
+    expect(res.accepted).toBe(false)
+  })
+})
+
 describe('partitionSafeSkills', () => {
   it('excludes skills whose instructions fail the guard and reports why', () => {
     const { safe, excluded } = partitionSafeSkills([

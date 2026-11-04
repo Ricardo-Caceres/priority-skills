@@ -83,7 +83,10 @@ export function validateSkill(ingested: any, source?: string, config: SecurityCo
   logEvent(evPass)
 
   // 2. instruction sanitization
-  const instructions = (ingested.instructions || '') as string
+  // Manifests may put instructions at the top level or under metadata; check both.
+  const instructions = [ingested.instructions, ingested.metadata?.instructions]
+    .filter((text): text is string => typeof text === 'string')
+    .join('\n')
   const { sanitized, blocked, reasons } = sanitizeInstructions(instructions, config)
   if (blocked) {
     const ev: SecurityEvent = { skillId, check: 'instruction-sanitization', result: 'fail', reason: reasons.join('; '), details: { sanitized }, timestamp: new Date().toISOString(), source }
@@ -132,9 +135,8 @@ export function partitionSafeSkills(
   const safe: NormalizedSkill[] = []
   const excluded: ExcludedSkill[] = []
   for (const skill of skills) {
-    const instructions = skill.metadata?.instructions
     const report = validateSkill(
-      { ...skill, ...(typeof instructions === 'string' ? { instructions } : {}) },
+      skill,
       typeof skill.metadata?.source === 'string' ? skill.metadata.source : undefined,
       config
     )
